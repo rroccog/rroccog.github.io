@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -28,11 +27,11 @@
 
             <div id="sidebar-tab1" class="sidebar-content active">
                 <h3>Filtros</h3>
-
                 <div class="filter-section">
                     <label for="idSearch">Buscar por ID:</label>
                     <input type="text" id="idSearch" placeholder="Ej: 123">
                     <button id="searchBtn">Buscar</button>
+                    <button id="resetBtn">Reiniciar</button>
                 </div>
 
                 <div class="filter-section">
@@ -108,10 +107,10 @@
         function buscarPorID(searchId) {
             if (!dataGeoJSON || !searchId) return;
             idValue = searchId;
-            filtrarPuntos();
+            filtrarPuntos(true); // <-- true = hacer zoom
         }
 
-        function filtrarPuntos() {
+        function filtrarPuntos(hacerZoom = false) {
             if (!dataGeoJSON) return;
 
             const campo = campoSelect.value;
@@ -124,7 +123,6 @@
 
             let selectedLayer = null;
 
-            // Si hay ID buscado, buscar en todos los datos
             if (idValue) {
                 const featureID = dataGeoJSON.features.find(f => f.properties.ID == idValue);
                 if (featureID) {
@@ -180,7 +178,7 @@
                 }
             }).addTo(map);
 
-            if (selectedLayer) {
+            if (hacerZoom && selectedLayer) {
                 map.setView(selectedLayer.getLatLng(), 17);
                 selectedLayer.openPopup();
             }
@@ -203,19 +201,34 @@
 
         // EVENTOS
 
+        document.getElementById("resetBtn").addEventListener("click", () => {
+            idValue = null;
+            document.getElementById("idSearch").value = "";
+            document.getElementById("valorRange").value = 0;
+            document.getElementById("valorLabel").textContent = 0;
+
+            if (ciudadDelID) {
+                ciudadSeleccionada = ciudadDelID;
+                document.querySelectorAll('.CITY button').forEach(btn => btn.classList.remove('active-city'));
+                const botonCiudad = document.querySelector(`[data-city="${ciudadDelID}"]`);
+                if (botonCiudad) botonCiudad.classList.add('active-city');
+            }
+
+            filtrarPuntos(false); // No hacer zoom
+        });
+
         document.querySelectorAll('.CITY button').forEach(button => {
             button.addEventListener('click', () => {
                 document.querySelectorAll('.CITY button').forEach(btn => btn.classList.remove('active-city'));
                 button.classList.add('active-city');
 
-                if (idValue || ciudadDelID) {
-                    idValue = null;
-                    ciudadDelID = null;
-                    document.getElementById("idSearch").value = "";
-                }
+                // Limpiar ID seleccionado
+                idValue = null;
+                ciudadDelID = null;
+                document.getElementById("idSearch").value = "";
 
                 ciudadSeleccionada = button.dataset.city;
-                filtrarPuntos();
+                filtrarPuntos(false); // No hacer zoom automático al ID
 
                 const centro = ciudadCentro[ciudadSeleccionada];
                 if (centro) map.setView([centro.lat, centro.lng], centro.zoom);
@@ -224,11 +237,11 @@
 
         document.getElementById("valorRange").addEventListener("input", (e) => {
             document.getElementById("valorLabel").textContent = e.target.value;
-            filtrarPuntos();
+            filtrarPuntos(false); // No hacer zoom al ID
         });
 
-        document.querySelectorAll('input[name="categoria"]').forEach(cb => cb.addEventListener("change", filtrarPuntos));
-        campoSelect.addEventListener("change", filtrarPuntos);
+        document.querySelectorAll('input[name="categoria"]').forEach(cb => cb.addEventListener("change", () => filtrarPuntos(false)));
+        campoSelect.addEventListener("change", () => filtrarPuntos(false));
 
         document.getElementById("searchBtn").addEventListener("click", () => {
             const searchValue = document.getElementById("idSearch").value.trim();
@@ -248,11 +261,12 @@
                 `Lat: ${event.latlng.lat.toFixed(6)}, Lng: ${event.latlng.lng.toFixed(6)}`;
         });
 
+        // CARGA GEOJSON
         fetch('puntos_100_ciudades.geojson')
             .then(resp => resp.json())
             .then(data => {
                 dataGeoJSON = data;
-                filtrarPuntos();
+                filtrarPuntos(false); // No hacer zoom al cargar
             })
             .catch(err => console.error("Error cargando GeoJSON:", err));
     </script>
