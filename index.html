@@ -31,7 +31,6 @@
                     <label for="idSearch">Buscar por ID:</label>
                     <input type="text" id="idSearch" placeholder="Ej: 123">
                     <button id="searchBtn">Buscar</button>
-                    <button id="resetBtn">Reiniciar</button>
                 </div>
 
                 <div class="filter-section">
@@ -79,6 +78,8 @@
         let idValue = null;
         let ciudadDelID = null;
         const campoSelect = document.getElementById("campoSelect");
+        const slider = document.getElementById("valorRange");
+        let sliderMovido = false; // bandera para saber si el usuario movió el slider
 
         const ciudadCentro = {
             "Valparaiso": { lat: -33.0458, lng: -71.6197, zoom: 12 },
@@ -107,7 +108,8 @@
         function buscarPorID(searchId) {
             if (!dataGeoJSON || !searchId) return;
             idValue = searchId;
-            filtrarPuntos(true); // <-- true = hacer zoom
+            sliderMovido = false; // resetear slider al buscar ID
+            filtrarPuntos(true);
         }
 
         function filtrarPuntos(hacerZoom = false) {
@@ -147,15 +149,19 @@
                 const valores = filteredFeatures.map(f => f.properties[campo]);
                 const minValor = Math.min(...valores);
                 const maxValor = Math.max(...valores);
-                const slider = document.getElementById("valorRange");
+
                 slider.min = minValor;
                 slider.max = maxValor;
-                if (slider.value < minValor) slider.value = minValor;
-                if (slider.value > maxValor) slider.value = maxValor;
-                document.getElementById("valorLabel").textContent = slider.value;
+
+                // Solo actualizar slider al mínimo si no ha sido movido por el usuario
+                if (!sliderMovido) {
+                    slider.value = minValor;
+                    document.getElementById("valorLabel").textContent = slider.value;
+                }
             }
 
-            filteredFeatures = filteredFeatures.filter(f => f.properties[campo] >= parseInt(document.getElementById("valorRange").value));
+            // Filtrar por valor del slider
+            filteredFeatures = filteredFeatures.filter(f => f.properties[campo] >= parseInt(slider.value));
 
             if (geojsonLayer) map.removeLayer(geojsonLayer);
 
@@ -173,7 +179,7 @@
                         `Valor: ${feature.properties.Value}<br>` +
                         `Categoría: ${feature.properties.categoria}`
                     );
-                    if (idValue && feature.properties.ID == idValue) selectedLayer = marker;
+                    if (hacerZoom && idValue && feature.properties.ID == idValue) selectedLayer = marker;
                     return marker;
                 }
             }).addTo(map);
@@ -200,23 +206,6 @@
         legend.addTo(map);
 
         // EVENTOS
-
-        document.getElementById("resetBtn").addEventListener("click", () => {
-            idValue = null;
-            document.getElementById("idSearch").value = "";
-            document.getElementById("valorRange").value = 0;
-            document.getElementById("valorLabel").textContent = 0;
-
-            if (ciudadDelID) {
-                ciudadSeleccionada = ciudadDelID;
-                document.querySelectorAll('.CITY button').forEach(btn => btn.classList.remove('active-city'));
-                const botonCiudad = document.querySelector(`[data-city="${ciudadDelID}"]`);
-                if (botonCiudad) botonCiudad.classList.add('active-city');
-            }
-
-            filtrarPuntos(false); // No hacer zoom
-        });
-
         document.querySelectorAll('.CITY button').forEach(button => {
             button.addEventListener('click', () => {
                 document.querySelectorAll('.CITY button').forEach(btn => btn.classList.remove('active-city'));
@@ -225,19 +214,21 @@
                 // Limpiar ID seleccionado
                 idValue = null;
                 ciudadDelID = null;
+                sliderMovido = false; // resetear slider al cambiar ciudad
                 document.getElementById("idSearch").value = "";
 
                 ciudadSeleccionada = button.dataset.city;
-                filtrarPuntos(false); // No hacer zoom automático al ID
+                filtrarPuntos(false);
 
                 const centro = ciudadCentro[ciudadSeleccionada];
                 if (centro) map.setView([centro.lat, centro.lng], centro.zoom);
             });
         });
 
-        document.getElementById("valorRange").addEventListener("input", (e) => {
+        slider.addEventListener("input", (e) => {
+            sliderMovido = true; // el usuario ya interactuó
             document.getElementById("valorLabel").textContent = e.target.value;
-            filtrarPuntos(false); // No hacer zoom al ID
+            filtrarPuntos(false);
         });
 
         document.querySelectorAll('input[name="categoria"]').forEach(cb => cb.addEventListener("change", () => filtrarPuntos(false)));
@@ -266,7 +257,8 @@
             .then(resp => resp.json())
             .then(data => {
                 dataGeoJSON = data;
-                filtrarPuntos(false); // No hacer zoom al cargar
+                sliderMovido = false; // resetear slider al cargar datos
+                filtrarPuntos(false);
             })
             .catch(err => console.error("Error cargando GeoJSON:", err));
     </script>
