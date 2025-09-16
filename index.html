@@ -1,203 +1,260 @@
+
 <!DOCTYPE html>
 <html lang="es">
-
-
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- AQUI AJUSTAS el T√≠tulo de la aplicaci√≥n para que se muestre en el navegador -->
-  <title>app rr</title>
-
-  <!-- AquÌ≠ traes el CSS de la librer√≠a Leaflet para mapas interactivos -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
-  <!-- AquÌ≠ traers tu archivo de estilos personalizados de la aplicaci√≥n -->
-  <link rel="stylesheet" href="style.css">
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App GIS - Sistema de Informaci√≥n Geogr√°fica</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-
-  <div class="header">
-    <h1>Probando SIG</h1>
-  </div>
-
-  <div class="main-container">
-    
-    <!-- Botones pequeÒos -->
-    <div class="tab-buttons">
-      <button onclick="openTab('tab1')">1</button>
-      <button onclick="openTab('tab2')">2</button>
+    <div class="header">
+        <h1>Probando SIG</h1>
     </div>
-    
 
-<!-- Sidebar din·mico -->
-    <div class="sidebar-layers">
-    
-    <div class="filter-section CITY">
-      <button data-city="Valparaiso">Valparaiso</button>
-      <button data-city="Temuco">Temuco</button>
-      <button data-city="Valdivia">Valdivia</button>
-    </div>
-      
-      <!-- Sidebar TAB 1 -->
-      <div id="sidebar-tab1" class="sidebar-content active">
-        
-        <h3>Filtros</h3>
-        <div class="filter-section">
-          <label>Selecciona categorÌas:</label><br>
-          <input type="checkbox" name="categoria" value="a" checked id="cat-a"><label for="cat-a"> A</label><br>
-          <input type="checkbox" name="categoria" value="b" checked id="cat-b"><label for="cat-b"> B</label><br>
-          <input type="checkbox" name="categoria" value="c" checked id="cat-c"><label for="cat-c"> C</label><br>
-          <input type="checkbox" name="categoria" value="d" id="cat-d"><label for="cat-d"> D</label>
+    <div class="main-container">
+        <div class="tab-buttons">
+            <button onclick="openTab('tab1')">1</button>
+            <button onclick="openTab('tab2')">2</button>
         </div>
 
-        <div class="filter-section">
-          <label for="campoSelect">Filtrar por campo:</label>
-          <select id="campoSelect">
-            <option value="Value" selected>Valor</option>
-            <option value="ID">ID</option>
-          </select>
+        <div class="sidebar-layers">
+            <div class="filter-section CITY">
+                <button data-city="Valparaiso">Valpara√≠so</button>
+                <button data-city="Temuco">Temuco</button>
+                <button data-city="Valdivia">Valdivia</button>
+            </div>
+
+            <div id="sidebar-tab1" class="sidebar-content active">
+                <h3>Filtros</h3>
+
+                <div class="filter-section">
+                    <label for="idSearch">Buscar por ID:</label>
+                    <input type="text" id="idSearch" placeholder="Ej: 123">
+                    <button id="searchBtn">Buscar</button>
+                </div>
+
+                <div class="filter-section">
+                    <label>Selecciona categor√≠as:</label><br>
+                    <input type="checkbox" name="categoria" value="a" checked id="cat-a"><label for="cat-a"> A</label><br>
+                    <input type="checkbox" name="categoria" value="b" checked id="cat-b"><label for="cat-b"> B</label><br>
+                    <input type="checkbox" name="categoria" value="c" checked id="cat-c"><label for="cat-c"> C</label><br>
+                    <input type="checkbox" name="categoria" value="d" id="cat-d"><label for="cat-d"> D</label>
+                </div>
+
+                <div class="filter-section">
+                    <label for="campoSelect">Filtrar por campo:</label>
+                    <select id="campoSelect">
+                        <option value="Value" selected>Valor</option>
+                        <option value="ID">ID</option>
+                    </select>
+                </div>
+
+                <div class="filter-section">
+                    <label for="valorRange">Valor m√≠nimo: <span id="valorLabel">0</span></label>
+                    <div class="range-container">
+                        <input type="range" id="valorRange" min="0" max="100" step="1" value="0">
+                    </div>
+                </div>
+            </div>
+
+            <div id="sidebar-tab2" class="sidebar-content">
+                <h3>Opciones Tab 2</h3>
+                <p>Aqu√≠ puedes poner filtros distintos, o configuraciones especiales.</p>
+            </div>
+
+            <div class="coordinates-display" id="coordinates">
+                Lat: 0.000000, Lng: 0.000000
+            </div>
         </div>
 
-        <div class="filter-section">
-          <label for="valorRange">Valor mÌnimo: <span id="valorLabel">0</span></label>
-          <div class="range-container">
-            <input type="range" id="valorRange" min="0" max="100" step="1" value="0">
-          </div>
-        </div>
-      </div>
-
-      <!-- Sidebar TAB 2 -->
-      <div id="sidebar-tab2" class="sidebar-content">
-        <h3>Opciones Tab 2</h3>
-        <p>AquÌ puedes poner filtros distintos, o configuraciones especiales.</p>
-      </div>      
-      
-      <div class="coordinates-display" id="coordinates">
-        Lat: 0.000000, Lng: 0.000000
-      </div>
+        <div id="map"></div>
     </div>
-    
-    <div id="map"></div>
-  </div>
 
- 
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        let ciudadSeleccionada = null;
+        let dataGeoJSON = null;
+        let geojsonLayer = null;
+        let idValue = null;
+        let ciudadDelID = null;
+        const campoSelect = document.getElementById("campoSelect");
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  
-  <script>
-  
-    function openTab(tabId) {
-      // Ocultar todos los sidebars
-      document.querySelectorAll(".sidebar-content").forEach(s => s.classList.remove("active"));
-      // Mostrar el sidebar de la pestaÒa seleccionada
-      document.getElementById("sidebar-" + tabId).classList.add("active");
+        const ciudadCentro = {
+            "Valparaiso": { lat: -33.0458, lng: -71.6197, zoom: 12 },
+            "Temuco": { lat: -38.7359, lng: -72.5904, zoom: 12 },
+            "Valdivia": { lat: -39.8196, lng: -73.2451, zoom: 12 }
+        };
 
-      // Resaltar el botÛn activo
-      document.querySelectorAll(".tab-buttons button").forEach(b => b.classList.remove("active-btn"));
-      event.currentTarget.classList.add("active-btn");
-    }
-  
-    const ciudadCentro = {
-      "Valparaiso": { lat: -33.0458, lng: -71.6197, zoom: 12 },
-      "Temuco": { lat: -38.7359, lng: -72.5904, zoom: 12 },
-      "Valdivia": { lat: -39.8196, lng: -73.2451, zoom: 12 }
-    };
-  
-    const map = L.map('map').setView([-36.4569, -71.4], 6);
+        const map = L.map('map').setView([-36.4569, -71.4], 6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-      maxZoom: 19
-    }).addTo(map);
-    
-    let ciudadSeleccionada = null; // ninguna ciudad seleccionada al inicio
-    let dataGeoJSON;
-    let geojsonLayer;
-
-    const campoSelect = document.getElementById("campoSelect");
-
-    function getColorByCategory(categoria) {
-      switch(categoria) {
-        case "a": return "#FF4136";
-        case "b": return "#0074D9";
-        case "c": return "#2ECC40";
-        default: return "#AAAAAA";
-      }
-    }
-
-    
-    function filtrarPuntos() {
-      if (!dataGeoJSON) return;
-
-      const campo = campoSelect.value;
-      const valorMin = parseInt(document.getElementById("valorRange").value);
-      const categorias = Array.from(document.querySelectorAll('input[name="categoria"]:checked')).map(cb => cb.value);
-
-      if (geojsonLayer) map.removeLayer(geojsonLayer);
-
-      geojsonLayer = L.geoJSON(dataGeoJSON, {
-        filter: feature => 
-        categorias.includes(feature.properties.categoria) &&
-        feature.properties[campo] >= valorMin &&
-        (!ciudadSeleccionada || feature.properties.Ciudad === ciudadSeleccionada),
-        
-        pointToLayer: (feature, latlng) => {
-          let color = getColorByCategory(feature.properties.categoria);
-          return L.circleMarker(latlng, {
-            radius: 6,
-            fillColor: color,
-            color: "#fff",
-            weight: 1,
-            fillOpacity: 0.9
-          }).bindPopup(
-            `ID: ${feature.properties.ID}<br>` +
-            `Valor: ${feature.properties.Value}<br>` +
-            `Categor√≠a: ${feature.properties.categoria}`
-          );
+        function openTab(tabId) {
+            document.querySelectorAll(".sidebar-content").forEach(s => s.classList.remove("active"));
+            document.getElementById("sidebar-" + tabId).classList.add("active");
+            document.querySelectorAll(".tab-buttons button").forEach(b => b.classList.remove("active-btn"));
+            event.currentTarget.classList.add("active-btn");
         }
-      }).addTo(map);
-    }
 
-    // Eventos de filtros
-    
-    document.querySelectorAll('.CITY button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        ciudadSeleccionada = btn.dataset.city;
-        filtrarPuntos(); // filtra los puntos
-
-        // Hacer zoom al centro de la ciudad
-        const centro = ciudadCentro[ciudadSeleccionada];
-        if (centro) {
-          map.setView([centro.lat, centro.lng], centro.zoom);
+        function getColorByCategory(categoria) {
+            const colores = { "a":"#FF4136", "b":"#0074D9", "c":"#2ECC40", "d":"#FF851B", "default":"#AAAAAA" };
+            return colores[categoria] || colores.default;
         }
-      });
-    });
-    
-    document.getElementById("valorRange").addEventListener("input", () => {
-      document.getElementById("valorLabel").textContent = document.getElementById("valorRange").value;
-      filtrarPuntos();
-    });
 
-    document.querySelectorAll('input[name="categoria"]').forEach(cb => cb.addEventListener("change", filtrarPuntos));
-    campoSelect.addEventListener("change", filtrarPuntos);
+        function buscarPorID(searchId) {
+            if (!dataGeoJSON || !searchId) return;
+            idValue = searchId;
+            filtrarPuntos();
+        }
 
-    // Coordenadas en tiempo real
-    map.on('mousemove', e => {
-      document.getElementById('coordinates').textContent = 
-        `Lat: ${e.latlng.lat.toFixed(6)}, Lng: ${e.latlng.lng.toFixed(6)}`;
-    });
+        function filtrarPuntos() {
+            if (!dataGeoJSON) return;
 
-    // Cargar GeoJSON externo
-    fetch('puntos_100_ciudades.geojson')
-      .then(resp => resp.json())
-      .then(data => {
-        dataGeoJSON = data;
-        filtrarPuntos(); // Mostrar puntos iniciales
-      })
-      .catch(err => console.error("Error cargando GeoJSON:", err));
-  </script>
+            const campo = campoSelect.value;
+            const categorias = Array.from(document.querySelectorAll('input[name="categoria"]:checked')).map(cb => cb.value);
+
+            let filteredFeatures = dataGeoJSON.features.filter(f =>
+                categorias.includes(f.properties.categoria) &&
+                (!ciudadSeleccionada || f.properties.Ciudad === ciudadSeleccionada)
+            );
+
+            let selectedLayer = null;
+
+            // Si hay ID buscado, buscar en todos los datos
+            if (idValue) {
+                const featureID = dataGeoJSON.features.find(f => f.properties.ID == idValue);
+                if (featureID) {
+                    ciudadDelID = featureID.properties.Ciudad;
+
+                    document.querySelectorAll('.CITY button').forEach(btn => btn.classList.remove('active-city'));
+                    const botonCiudad = document.querySelector(`[data-city="${ciudadDelID}"]`);
+                    if (botonCiudad) botonCiudad.classList.add('active-city');
+
+                    filteredFeatures = dataGeoJSON.features.filter(f =>
+                        categorias.includes(f.properties.categoria) &&
+                        (f.properties.ID == idValue || f.properties.Ciudad === ciudadDelID)
+                    );
+                } else {
+                    console.warn(`No se encontr√≥ un punto con ID: ${idValue}`);
+                    filteredFeatures = [];
+                }
+            }
+
+            // Slider din√°mico
+            if (filteredFeatures.length > 0) {
+                const valores = filteredFeatures.map(f => f.properties[campo]);
+                const minValor = Math.min(...valores);
+                const maxValor = Math.max(...valores);
+                const slider = document.getElementById("valorRange");
+                slider.min = minValor;
+                slider.max = maxValor;
+                if (slider.value < minValor) slider.value = minValor;
+                if (slider.value > maxValor) slider.value = maxValor;
+                document.getElementById("valorLabel").textContent = slider.value;
+            }
+
+            filteredFeatures = filteredFeatures.filter(f => f.properties[campo] >= parseInt(document.getElementById("valorRange").value));
+
+            if (geojsonLayer) map.removeLayer(geojsonLayer);
+
+            geojsonLayer = L.geoJSON(filteredFeatures, {
+                pointToLayer: (feature, latlng) => {
+                    const color = getColorByCategory(feature.properties.categoria);
+                    const marker = L.circleMarker(latlng, {
+                        radius: 10,
+                        fillColor: color,
+                        color: "#fff",
+                        weight: 1,
+                        fillOpacity: 0.9
+                    }).bindPopup(
+                        `ID: ${feature.properties.ID}<br>` +
+                        `Valor: ${feature.properties.Value}<br>` +
+                        `Categor√≠a: ${feature.properties.categoria}`
+                    );
+                    if (idValue && feature.properties.ID == idValue) selectedLayer = marker;
+                    return marker;
+                }
+            }).addTo(map);
+
+            if (selectedLayer) {
+                map.setView(selectedLayer.getLatLng(), 17);
+                selectedLayer.openPopup();
+            }
+        }
+
+        // Leyenda
+        const legend = L.control({ position: "bottomright" });
+        legend.onAdd = function(map) {
+            const div = L.DomUtil.create("div", "info legend");
+            const categorias = ["a", "b", "c", "d"];
+            const nombres = { "a":"A", "b":"B", "c":"C", "d":"D" };
+            div.innerHTML += "<h4>Categor√≠as</h4>";
+            categorias.forEach(cat => {
+                const color = getColorByCategory(cat);
+                div.innerHTML += `<i style="background:${color}; width: 18px; height: 18px; display:inline-block; margin-right:5px;"></i>${nombres[cat]}<br>`;
+            });
+            return div;
+        };
+        legend.addTo(map);
+
+        // EVENTOS
+
+        document.querySelectorAll('.CITY button').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.CITY button').forEach(btn => btn.classList.remove('active-city'));
+                button.classList.add('active-city');
+
+                if (idValue || ciudadDelID) {
+                    idValue = null;
+                    ciudadDelID = null;
+                    document.getElementById("idSearch").value = "";
+                }
+
+                ciudadSeleccionada = button.dataset.city;
+                filtrarPuntos();
+
+                const centro = ciudadCentro[ciudadSeleccionada];
+                if (centro) map.setView([centro.lat, centro.lng], centro.zoom);
+            });
+        });
+
+        document.getElementById("valorRange").addEventListener("input", (e) => {
+            document.getElementById("valorLabel").textContent = e.target.value;
+            filtrarPuntos();
+        });
+
+        document.querySelectorAll('input[name="categoria"]').forEach(cb => cb.addEventListener("change", filtrarPuntos));
+        campoSelect.addEventListener("change", filtrarPuntos);
+
+        document.getElementById("searchBtn").addEventListener("click", () => {
+            const searchValue = document.getElementById("idSearch").value.trim();
+            if (searchValue) buscarPorID(searchValue);
+        });
+
+        document.getElementById("idSearch").addEventListener("keypress", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                const searchValue = e.target.value.trim();
+                if (searchValue) buscarPorID(searchValue);
+            }
+        });
+
+        map.on('mousemove', (event) => {
+            document.getElementById('coordinates').textContent = 
+                `Lat: ${event.latlng.lat.toFixed(6)}, Lng: ${event.latlng.lng.toFixed(6)}`;
+        });
+
+        fetch('puntos_100_ciudades.geojson')
+            .then(resp => resp.json())
+            .then(data => {
+                dataGeoJSON = data;
+                filtrarPuntos();
+            })
+            .catch(err => console.error("Error cargando GeoJSON:", err));
+    </script>
 </body>
 </html>
